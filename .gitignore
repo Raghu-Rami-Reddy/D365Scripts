@@ -1,0 +1,5 @@
+.DS_Store
+solution/
+*.zip
+bin/
+obj/
