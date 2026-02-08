@@ -5,51 +5,86 @@ pool:
   vmImage: windows-latest
 
 variables:
-  solutionName: RogCorpMain_Patch
+  solutionName: RogCorpMain
   solutionFolder: $(Build.SourcesDirectory)\solution
-  packedSolution: $(Build.ArtifactStagingDirectory)\patch.zip
+  packedSolution: $(Build.ArtifactStagingDirectory)\RogCorpMain.zip
+  webresourceName: rogcorp_test_script
 
 steps:
 
+# Always start clean (prevents cached metadata bugs)
 - checkout: self
   clean: true
 
-# Install PAC
+
+# ✅ Validate source JS exists in repo
+- powershell: |
+    $src = "$(Build.SourcesDirectory)\src\WebResources\$(webresourceName).js"
+
+    if (!(Test-Path $src)) {
+        Write-Host "##[error]Source JS file missing from repo."
+        exit 1
+    }
+
+    Write-Host "Source validation passed."
+  displayName: Validate source JS exists
+
+
+# Install Power Platform CLI
 - task: PowerPlatformToolInstaller@2
 
-# Export PATCH (not base)
+
+# ✅ Export CURRENT unmanaged solution from DEV
 - task: PowerPlatformExportSolution@2
   inputs:
     authenticationType: PowerPlatformSPN
     PowerPlatformSPN: Sales_Env_SC
     SolutionName: $(solutionName)
-    SolutionOutputFile: '$(solutionFolder)\patch.zip'
+    SolutionOutputFile: '$(solutionFolder)\$(solutionName).zip'
     Managed: false
 
-# Unpack
+
+# ✅ Unpack solution safely
 - script: |
     pac solution unpack ^
-      --zipfile "$(solutionFolder)\patch.zip" ^
+      --zipfile "$(solutionFolder)\$(solutionName).zip" ^
       --folder "$(solutionFolder)" ^
       --packagetype Unmanaged ^
       --allowDelete true
-  displayName: Unpack patch
+  displayName: Unpack solution
 
-# Replace JS
+
+# ✅ Validate target webresource exists inside solution
+- powershell: |
+    $path = "$(solutionFolder)\WebResources\$(webresourceName)"
+
+    if (!(Test-Path $path)) {
+        Write-Host "##[error]Webresource $(webresourceName) NOT found inside solution."
+        Write-Host "##[error]Someone may have removed it from the solution in DEV."
+        exit 1
+    }
+
+    Write-Host "Target validation passed."
+  displayName: Validate webresource exists in solution
+
+
+# ✅ Inject updated JS
 - script: |
-    copy "$(Build.SourcesDirectory)\src\WebResources\rogcorp_test_script.js" ^
-         "$(solutionFolder)\WebResources\rogcorp_test_script.js"
-  displayName: Inject JS
+    copy "$(Build.SourcesDirectory)\src\WebResources\$(webresourceName)" ^
+         "$(solutionFolder)\WebResources\$(webresourceName)"
+  displayName: Inject webresource
 
-# Pack patch
+
+# ✅ Repack solution
 - script: |
     pac solution pack ^
       --folder "$(solutionFolder)" ^
       --zipfile "$(packedSolution)" ^
       --packagetype Unmanaged
-  displayName: Pack patch
+  displayName: Pack solution
 
-# Import patch
+
+# ✅ Import back into DEV
 - task: PowerPlatformImportSolution@2
   inputs:
     authenticationType: PowerPlatformSPN
@@ -58,7 +93,8 @@ steps:
     AsyncOperation: true
     MaxAsyncWaitTime: 60
 
-# Publish
+
+# ✅ Publish customizations
 - task: PowerPlatformPublishCustomizations@2
   inputs:
     authenticationType: PowerPlatformSPN
