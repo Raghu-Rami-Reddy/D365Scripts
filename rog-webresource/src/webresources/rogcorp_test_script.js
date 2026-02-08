@@ -1,4 +1,4 @@
-﻿//Download button
+//Download button
 
 //Custom Save button
 
