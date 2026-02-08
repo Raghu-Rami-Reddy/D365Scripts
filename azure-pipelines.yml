@@ -45,13 +45,11 @@ steps:
 
 
 # ✅ Unpack solution safely
-- script: |
-    pac solution unpack ^
-      --zipfile "$(solutionFolder)\$(solutionName).zip" ^
-      --folder "$(solutionFolder)" ^
-      --packagetype Unmanaged ^
-      --allowDelete true
-  displayName: Unpack solution
+- task: PowerPlatformUnpackSolution@2
+  inputs:
+    SolutionInputFile: '$(solutionFolder)\$(solutionName).zip'
+    SolutionTargetFolder: '$(solutionFolder)'
+    SolutionType: 'Unmanaged'
 
 
 # ✅ Validate target webresource exists inside solution
@@ -76,12 +74,11 @@ steps:
 
 
 # ✅ Repack solution
-- script: |
-    pac solution pack ^
-      --folder "$(solutionFolder)" ^
-      --zipfile "$(packedSolution)" ^
-      --packagetype Unmanaged
-  displayName: Pack solution
+- task: PowerPlatformPackSolution@2
+  inputs:
+    SolutionSourceFolder: '$(solutionFolder)'
+    SolutionOutputFile: '$(packedSolution)'
+    SolutionType: 'Unmanaged'
 
 
 # ✅ Import back into DEV
