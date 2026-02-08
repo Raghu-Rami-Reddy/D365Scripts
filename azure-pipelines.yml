@@ -68,7 +68,7 @@ steps:
 
 # ✅ Inject updated JS
 - script: |
-    copy "$(Build.SourcesDirectory)\src\WebResources\$(webresourceName)" ^
+    copy "$(Build.SourcesDirectory)\src\WebResources\$(webresourceName).js" ^
          "$(solutionFolder)\WebResources\$(webresourceName)"
   displayName: Inject webresource
 
