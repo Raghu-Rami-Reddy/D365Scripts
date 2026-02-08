@@ -1,0 +1,65 @@
+trigger:
+- main
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  solutionName: RogCorpMain
+  solutionFolder: $(Build.SourcesDirectory)\solution
+  packedSolution: $(Build.ArtifactStagingDirectory)\RogCorpMain.zip
+
+steps:
+
+- checkout: self
+  clean: true
+
+# Install Power Platform CLI
+- task: PowerPlatformToolInstaller@2
+
+# Export latest solution from DEV
+- task: PowerPlatformExportSolution@2
+  inputs:
+    authenticationType: PowerPlatformSPN
+    PowerPlatformSPN: Sales_Env_SC
+    SolutionName: $(solutionName)
+    SolutionOutputFile: '$(solutionFolder)\$(solutionName).zip'
+    Managed: false
+
+# Unpack solution
+- script: |
+    pac solution unpack ^
+      --zipfile "$(solutionFolder)\$(solutionName).zip" ^
+      --folder "$(solutionFolder)" ^
+      --packagetype Unmanaged ^
+      --allowDelete true
+  displayName: Unpack solution
+
+# Inject updated JS
+- script: |
+    copy "$(Build.SourcesDirectory)\src\WebResources\rogcorp_test_script.js" ^
+         "$(solutionFolder)\WebResources\rogcorp_test_script.js"
+  displayName: Inject webresource
+
+# Pack solution
+- script: |
+    pac solution pack ^
+      --folder "$(solutionFolder)" ^
+      --zipfile "$(packedSolution)" ^
+      --packagetype Unmanaged
+  displayName: Pack solution
+
+# Import into DEV
+- task: PowerPlatformImportSolution@2
+  inputs:
+    authenticationType: PowerPlatformSPN
+    PowerPlatformSPN: Sales_Env_SC
+    SolutionInputFile: '$(packedSolution)'
+    AsyncOperation: true
+    MaxAsyncWaitTime: 60
+
+# Publish
+- task: PowerPlatformPublishCustomizations@2
+  inputs:
+    authenticationType: PowerPlatformSPN
+    PowerPlatformSPN: Sales_Env_SC
