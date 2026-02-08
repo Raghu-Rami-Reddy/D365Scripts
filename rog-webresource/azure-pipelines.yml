@@ -5,51 +5,51 @@ pool:
   vmImage: windows-latest
 
 variables:
-  solutionName: RogCorpMain
+  solutionName: RogCorpMain_Patch
   solutionFolder: $(Build.SourcesDirectory)\solution
-  packedSolution: $(Build.ArtifactStagingDirectory)\RogCorpMain.zip
+  packedSolution: $(Build.ArtifactStagingDirectory)\patch.zip
 
 steps:
 
 - checkout: self
   clean: true
 
-# Install Power Platform CLI
+# Install PAC
 - task: PowerPlatformToolInstaller@2
 
-# Export latest solution from DEV
+# Export PATCH (not base)
 - task: PowerPlatformExportSolution@2
   inputs:
     authenticationType: PowerPlatformSPN
     PowerPlatformSPN: Sales_Env_SC
     SolutionName: $(solutionName)
-    SolutionOutputFile: '$(solutionFolder)\$(solutionName).zip'
+    SolutionOutputFile: '$(solutionFolder)\patch.zip'
     Managed: false
 
-# Unpack solution
+# Unpack
 - script: |
     pac solution unpack ^
-      --zipfile "$(solutionFolder)\$(solutionName).zip" ^
+      --zipfile "$(solutionFolder)\patch.zip" ^
       --folder "$(solutionFolder)" ^
       --packagetype Unmanaged ^
       --allowDelete true
-  displayName: Unpack solution
+  displayName: Unpack patch
 
-# Inject updated JS
+# Replace JS
 - script: |
     copy "$(Build.SourcesDirectory)\src\WebResources\rogcorp_test_script.js" ^
          "$(solutionFolder)\WebResources\rogcorp_test_script.js"
-  displayName: Inject webresource
+  displayName: Inject JS
 
-# Pack solution
+# Pack patch
 - script: |
     pac solution pack ^
       --folder "$(solutionFolder)" ^
       --zipfile "$(packedSolution)" ^
       --packagetype Unmanaged
-  displayName: Pack solution
+  displayName: Pack patch
 
-# Import into DEV
+# Import patch
 - task: PowerPlatformImportSolution@2
   inputs:
     authenticationType: PowerPlatformSPN
