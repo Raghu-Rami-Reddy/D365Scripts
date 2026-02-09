@@ -91,8 +91,4 @@ steps:
     MaxAsyncWaitTime: 60
 
 
-# ✅ Publish customizations
-- task: PowerPlatformPublishCustomizations@2
-  inputs:
-    authenticationType: PowerPlatformSPN
-    PowerPlatformSPN: Sales_Env_SC
+# Publish customizations manually.
